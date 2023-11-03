@@ -21,12 +21,13 @@ import java.util.Locale;
 
 import de.fhdw.app_entwicklung.chatgpt.openai.ChatGpt;
 import de.fhdw.app_entwicklung.chatgpt.speech.LaunchSpeechRecognition;
+import de.fhdw.app_entwicklung.chatgpt.speech.TextToSpeechHelper;
 
 public class MainFragment extends Fragment {
 
     private static final String CHAT_SEPARATOR = "\n\n";
     private static String answer;
-    private TextToSpeech tts;
+    private TextToSpeechHelper tts;
 
     private final ActivityResultLauncher<LaunchSpeechRecognition.SpeechRecognitionArgs> getTextFromSpeech = registerForActivityResult(
             new LaunchSpeechRecognition(),
@@ -54,6 +55,7 @@ public class MainFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        tts = new TextToSpeechHelper(requireContext(), Locale.GERMAN);
 
         getAskButton().setOnClickListener(v -> {
             getTextFromSpeech.launch(new LaunchSpeechRecognition.SpeechRecognitionArgs(Locale.GERMAN));
@@ -61,22 +63,13 @@ public class MainFragment extends Fragment {
         });
 
         getSpeakButton().setOnClickListener(v -> {
-            processTextToSpeech();
-        });
-
-        tts = new TextToSpeech(requireContext(), new TextToSpeech.OnInitListener() {
-            @Override
-            public void onInit(int status) {
-                if (status == TextToSpeech.SUCCESS) {
-                    int result = tts.setLanguage(Locale.GERMAN);
-                    if (result == tts.LANG_MISSING_DATA || result == tts.LANG_NOT_SUPPORTED) {
-                        // handle ERROR
-                    } else {
-                        // SUCCESS
-                    }
-                } else {
-                    // INIT failed
-                }
+            if (answer == null) {
+                // Display a Toast message when the string is empty
+                Toast.makeText(requireContext(), "Ask me something first.", Toast.LENGTH_SHORT).show();
+            } else {
+                // Proceed with TextToSpeech processing if the string is not empty
+                // Your TextToSpeech code here
+                tts.speak(answer);
             }
         });
     }
@@ -94,16 +87,21 @@ public class MainFragment extends Fragment {
     private Button getSpeakButton() {
         return getView().findViewById(R.id.button_speak);
     }
-    public void processTextToSpeech() {
-        if (answer == null) {
-            // Display a Toast message when the string is empty
-            Toast.makeText(requireContext(), "Ask me something first.", Toast.LENGTH_SHORT).show();
-        } else {
-            // Proceed with TextToSpeech processing if the string is not empty
-            // Your TextToSpeech code here
-            tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, null);
-        }
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        tts.stop();
     }
+
+    @Override
+    public void onDestroy() {
+        tts.destroy();
+        tts = null;
+
+        super.onDestroy();
+    }
+
 
 
 }
